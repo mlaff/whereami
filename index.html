@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Where Am I">
+<meta name="theme-color" content="#0b0d17">
+<title>What Neighborhood?</title>
+<style>
+  :root {
+    --bg: #0b0d17;
+    --card: #151827;
+    --accent: #6c8cff;
+    --text: #f2f4ff;
+    --muted: #8b90a8;
+    --good: #4fd18b;
+    --warn: #ffcc66;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  html, body {
+    height: 100%;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  body {
+    display: flex;
+    flex-direction: column;
+    min-height: 100%;
+    padding: env(safe-area-inset-top) 20px calc(env(safe-area-inset-bottom) + 20px);
+    background: radial-gradient(1200px 600px at 50% -10%, #1b2038 0%, var(--bg) 60%);
+  }
+  header {
+    text-align: center;
+    padding: 26px 0 6px;
+  }
+  header .eyebrow {
+    font-size: 13px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 18px;
+    max-width: 520px;
+    width: 100%;
+    margin: 0 auto;
+  }
+  .hero {
+    text-align: center;
+    padding: 8px 0;
+  }
+  .hero .label {
+    font-size: 14px;
+    color: var(--muted);
+    margin-bottom: 8px;
+  }
+  .hero .place {
+    font-size: clamp(36px, 12vw, 60px);
+    font-weight: 800;
+    line-height: 1.05;
+    letter-spacing: -0.02em;
+    word-break: break-word;
+  }
+  .hero .sub {
+    margin-top: 14px;
+    font-size: 16px;
+    color: var(--muted);
+    line-height: 1.5;
+  }
+  .hero .sub b { color: var(--text); font-weight: 600; }
+
+  .chain {
+    background: var(--card);
+    border: 1px solid #232840;
+    border-radius: 18px;
+    padding: 6px 4px;
+    display: none;
+  }
+  .chain .row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    border-bottom: 1px solid #1e2338;
+  }
+  .chain .row:last-child { border-bottom: none; }
+  .chain .row .tier {
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted);
+    min-width: 108px;
+  }
+  .chain .row .val {
+    font-size: 17px;
+    font-weight: 600;
+    flex: 1;
+  }
+  .chain .row.top .val { color: var(--accent); }
+
+  .meta {
+    text-align: center;
+    font-size: 13px;
+    color: var(--muted);
+    line-height: 1.6;
+  }
+  .meta .dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--muted); margin-right: 6px; vertical-align: middle; }
+  .meta .dot.live { background: var(--good); box-shadow: 0 0 0 0 rgba(79,209,139,0.5); animation: pulse 2s infinite; }
+  @keyframes pulse {
+    0% { box-shadow: 0 0 0 0 rgba(79,209,139,0.5); }
+    70% { box-shadow: 0 0 0 8px rgba(79,209,139,0); }
+    100% { box-shadow: 0 0 0 0 rgba(79,209,139,0); }
+  }
+
+  button {
+    appearance: none;
+    border: none;
+    border-radius: 14px;
+    padding: 16px 22px;
+    font-size: 17px;
+    font-weight: 700;
+    font-family: inherit;
+    background: var(--accent);
+    color: #0b0d17;
+    cursor: pointer;
+    transition: transform 0.08s ease, opacity 0.2s ease;
+  }
+  button:active { transform: scale(0.97); }
+  button.ghost {
+    background: transparent;
+    color: var(--muted);
+    border: 1px solid #2a3050;
+    font-weight: 600;
+    font-size: 15px;
+    padding: 12px 18px;
+  }
+  .actions { display: flex; flex-direction: column; gap: 10px; align-items: center; }
+  .actions button { width: 100%; max-width: 320px; }
+
+  .status {
+    text-align: center;
+    color: var(--muted);
+    font-size: 15px;
+    line-height: 1.6;
+    min-height: 22px;
+  }
+  .status.error { color: var(--warn); }
+
+  footer {
+    text-align: center;
+    font-size: 11px;
+    color: #565b76;
+    padding-top: 18px;
+    line-height: 1.6;
+  }
+  footer a { color: #565b76; }
+</style>
+</head>
+<body>
+  <header>
+    <div class="eyebrow">You are in</div>
+  </header>
+
+  <main>
+    <div class="hero">
+      <div class="place" id="place">—</div>
+      <div class="sub" id="sub"></div>
+    </div>
+
+    <div class="chain" id="chain"></div>
+
+    <div class="status" id="status">Tap the button and allow location access.</div>
+
+    <div class="actions">
+      <button id="locate">Find my neighborhood</button>
+      <button class="ghost" id="live" style="display:none;">Stop live updates</button>
+    </div>
+
+    <div class="meta" id="meta"></div>
+  </main>
+
+  <footer>
+    Location stays on your device. Neighborhood data from
+    <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>.
+  </footer>
+
+<script>
+(function () {
+  "use strict";
+
+  // Address fields from most-specific to broadest, with the label shown to the user.
+  // Nominatim returns different keys per country, so we probe several per tier and
+  // take the first present, then de-duplicate identical values across tiers.
+  const TIERS = [
+    { label: "Sub-neighborhood", keys: ["neighbourhood"] },
+    { label: "Neighborhood",     keys: ["quarter"] },
+    { label: "Area",             keys: ["suburb", "city_district", "borough"] },
+    { label: "City",             keys: ["city", "town", "village", "municipality", "hamlet"] },
+    { label: "Region",           keys: ["state", "region", "province"] },
+    { label: "Country",          keys: ["country"] }
+  ];
+
+  const $ = (id) => document.getElementById(id);
+  const els = {
+    place: $("place"), sub: $("sub"), chain: $("chain"),
+    status: $("status"), locate: $("locate"), live: $("live"), meta: $("meta")
+  };
+
+  let watchId = null;
+  let lastFix = null;          // { lat, lon } of the last geocoded position
+  let lastGeocodeTime = 0;     // ms timestamp of last Nominatim call
+  let currentAddress = null;
+  let lastAccuracy = null;     // meters, for the status line when live is off
+
+  const MIN_MOVE_METERS = 40;   // re-geocode only after moving this far
+  const MIN_INTERVAL_MS = 8000; // ...or after this long (respects Nominatim rate limit)
+
+  function setStatus(msg, isError) {
+    els.status.textContent = msg;
+    els.status.className = "status" + (isError ? " error" : "");
+  }
+
+  // Haversine distance in meters between two lat/lon points.
+  function distanceMeters(a, b) {
+    const R = 6371000;
+    const toRad = (d) => d * Math.PI / 180;
+    const dLat = toRad(b.lat - a.lat);
+    const dLon = toRad(b.lon - a.lon);
+    const lat1 = toRad(a.lat);
+    const lat2 = toRad(b.lat);
+    const h = Math.sin(dLat / 2) ** 2 +
+              Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLon / 2) ** 2;
+    return 2 * R * Math.asin(Math.sqrt(h));
+  }
+
+  // Build an ordered, de-duplicated list of { label, value } from a Nominatim address.
+  function buildChain(address) {
+    const chain = [];
+    const seen = new Set();
+    for (const tier of TIERS) {
+      for (const key of tier.keys) {
+        const value = address[key];
+        if (value && !seen.has(value)) {
+          seen.add(value);
+          chain.push({ label: tier.label, value: value });
+          break; // first present key wins for this tier
+        }
+      }
+    }
+    return chain;
+  }
+
+  function render(address) {
+    currentAddress = address;
+    const chain = buildChain(address);
+
+    if (chain.length === 0) {
+      els.place.textContent = "Unknown area";
+      els.sub.textContent = "No named place here in OpenStreetMap.";
+      els.chain.style.display = "none";
+      return;
+    }
+
+    // Headline = the most specific named place.
+    els.place.textContent = chain[0].value;
+
+    // Subtitle = everything below the headline, broad-to-narrow reads naturally
+    // when we join the remainder from specific to broad.
+    const rest = chain.slice(1).map((c) => c.value);
+    els.sub.innerHTML = rest.length
+      ? rest.map((v, i) => i === rest.length - 1 ? "<b>" + v + "</b>" : v).join(" · ")
+      : "";
+
+    // Full breakdown card.
+    els.chain.innerHTML = chain.map((c, i) =>
+      '<div class="row' + (i === 0 ? " top" : "") + '">' +
+        '<div class="tier">' + c.label + '</div>' +
+        '<div class="val">' + escapeHtml(c.value) + '</div>' +
+      '</div>'
+    ).join("");
+    els.chain.style.display = "block";
+  }
+
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, (c) => ({
+      "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+    }[c]));
+  }
+
+  async function reverseGeocode(lat, lon) {
+    const url = "https://nominatim.openstreetmap.org/reverse" +
+      "?format=jsonv2&zoom=18&addressdetails=1&accept-language=en" +
+      "&lat=" + encodeURIComponent(lat) + "&lon=" + encodeURIComponent(lon);
+    const res = await fetch(url, { headers: { "Accept": "application/json" } });
+    if (!res.ok) throw new Error("Lookup failed (" + res.status + ")");
+    const data = await res.json();
+    if (!data || !data.address) throw new Error("No address found for this spot.");
+    return data.address;
+  }
+
+  async function handlePosition(pos) {
+    const lat = pos.coords.latitude;
+    const lon = pos.coords.longitude;
+    const now = Date.now();
+
+    // Skip redundant lookups when barely moved and recently fetched.
+    if (lastFix) {
+      const moved = distanceMeters(lastFix, { lat, lon });
+      if (moved < MIN_MOVE_METERS && (now - lastGeocodeTime) < MIN_INTERVAL_MS) {
+        updateMeta(pos);
+        return;
+      }
+    }
+
+    try {
+      const address = await reverseGeocode(lat, lon);
+      lastFix = { lat, lon };
+      lastGeocodeTime = Date.now();
+      render(address);
+      setStatus("");
+      updateMeta(pos);
+    } catch (err) {
+      setStatus(err.message, true);
+    }
+  }
+
+  function updateMeta(pos) {
+    if (pos && typeof pos.coords.accuracy === "number" && pos.coords.accuracy > 0) {
+      lastAccuracy = Math.round(pos.coords.accuracy);
+    }
+    const live = watchId !== null;
+    const accuracyText = lastAccuracy ? "accurate to ~" + lastAccuracy + " m" : "";
+    els.meta.innerHTML =
+      '<span class="dot' + (live ? " live" : "") + '"></span>' +
+      (live ? "Live · " : "Paused · ") +
+      accuracyText;
+  }
+
+  function handleError(err) {
+    let msg;
+    switch (err.code) {
+      case err.PERMISSION_DENIED:
+        msg = "Location permission denied. Enable it in your browser settings and try again.";
+        break;
+      case err.POSITION_UNAVAILABLE:
+        msg = "Couldn't determine your location. Try again in a moment.";
+        break;
+      case err.TIMEOUT:
+        msg = "Location request timed out. Try again.";
+        break;
+      default:
+        msg = "Something went wrong getting your location.";
+    }
+    setStatus(msg, true);
+    els.locate.disabled = false;
+  }
+
+  const geoOptions = { enableHighAccuracy: true, timeout: 15000, maximumAge: 5000 };
+
+  function startLive() {
+    if (watchId !== null) return;
+    watchId = navigator.geolocation.watchPosition(handlePosition, handleError, geoOptions);
+    els.live.style.display = "block";
+    els.live.textContent = "Stop live updates";
+  }
+
+  function stopLive() {
+    if (watchId !== null) {
+      navigator.geolocation.clearWatch(watchId);
+      watchId = null;
+    }
+    els.live.textContent = "Resume live updates";
+    if (currentAddress) updateMeta(null);
+  }
+
+  els.locate.addEventListener("click", function () {
+    if (!("geolocation" in navigator)) {
+      setStatus("This browser doesn't support location.", true);
+      return;
+    }
+    setStatus("Getting your location…");
+    els.locate.textContent = "Update now";
+    navigator.geolocation.getCurrentPosition(function (pos) {
+      handlePosition(pos);
+      startLive();
+    }, handleError, geoOptions);
+  });
+
+  els.live.addEventListener("click", function () {
+    if (watchId !== null) stopLive();
+    else {
+      startLive();
+      els.locate.click();
+    }
+  });
+})();
+</script>
+</body>
+</html>
